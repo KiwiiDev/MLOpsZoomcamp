@@ -53,7 +53,7 @@ def train_and_log_model(data_path, params):
     type=int,
     help="Number of top models that need to be evaluated to decide which one to promote"
 )
-def run_register_model(data_path: str, top_n: int):
+def run_register_model(data_path: str, top_n: int = 5):
 
     client = MlflowClient()
 
@@ -65,15 +65,23 @@ def run_register_model(data_path: str, top_n: int):
         max_results=top_n,
         order_by=["metrics.rmse ASC"]
     )
+    
     for run in runs:
         train_and_log_model(data_path=data_path, params=run.data.params)
 
     # Select the model with the lowest test RMSE
     experiment = client.get_experiment_by_name(EXPERIMENT_NAME)
+    #runs = client.search_runs(
+    #    experiment_ids=experiment.experiment_id,
+    #    order_by=['metrics.rmse ASC'])
+    best_run = runs[0]
     # best_run = client.search_runs( ...  )[0]
 
     # Register the best model
     # mlflow.register_model( ... )
+    run_id = best_run.info.run_id
+    model_uri = f"runs:/{run_id}/model"
+    mlflow.register_model(model_uri=model_uri, name='green-taxi-random-forest')
 
 
 if __name__ == '__main__':

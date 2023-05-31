@@ -29,7 +29,6 @@ def load_pickle(filename):
     help="The number of parameter evaluations for the optimizer to explore"
 )
 def run_optimization(data_path: str, num_trials: int):
-
     X_train, y_train = load_pickle(os.path.join(data_path, "train.pkl"))
     X_val, y_val = load_pickle(os.path.join(data_path, "val.pkl"))
 
@@ -40,19 +39,30 @@ def run_optimization(data_path: str, num_trials: int):
             'min_samples_split': trial.suggest_int('min_samples_split', 2, 10, 1),
             'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 4, 1),
             'random_state': 42,
-            'n_jobs': -1
+            'n_jobs': -1,
         }
+        mlflow.log_param(key='random_state', value=params['random_state'])
+        mlflow.log_param(key='n_jobs', value=params['n_jobs'])
+        #mlflow.sklearn.autolog()
+
+        mlflow.set_tag("developer", "KiwiiDev")
 
         rf = RandomForestRegressor(**params)
         rf.fit(X_train, y_train)
         y_pred = rf.predict(X_val)
         rmse = mean_squared_error(y_val, y_pred, squared=False)
+        
+        mlflow.log_metric("rmse loss", rmse)
+
+
 
         return rmse
 
     sampler = TPESampler(seed=42)
     study = optuna.create_study(direction="minimize", sampler=sampler)
     study.optimize(objective, n_trials=num_trials)
+    mlflow.log_params(study.best_params)
+
 
 
 if __name__ == '__main__':
